@@ -1,12 +1,12 @@
 from aiogram import F, Router
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.enums import ParseMode
 
 import fsm
 from keyboards.change_race_keyboard import race_kb
-from keyboards.inline_keyboards import next_button
+from keyboards.inline_keyboards import *
 
 router = Router()
 available_race_names = ["Ааракокра",]
@@ -103,8 +103,9 @@ async def character_hair(message: Message, state: FSMContext):
 
 @router.message(fsm.Character.character_race, F.text.in_(available_race_names))
 async def character_race(message: Message, state: FSMContext):
+    await state.update_data(character_race=message.text)
     if message.text == "Ааракокра":
-        await message.answer(text="[Описание расы](https://dnd.su/race/92-aarakocra/#osobennosti_aarakokr)\n\n"
+        await message.answer(text="[Описание расы](https://dnd.su/race/92-aarakocra/)\n\n"
                                   "*ОСОБЕННОСТИ ААРАКОКР*\n\n"
                                   "У вас, как у ааракокры, есть некоторые общие особенности с вашим народом\. "
                                   "Начиная с 1 уровня вы можете летать на высокой скорости, что исключительно эффективно"
@@ -119,4 +120,24 @@ async def character_race(message: Message, state: FSMContext):
                                   "_*Полёт\.*_ Вы можете летать со скоростью 50 футов\. Для этого вы __*не должны носить ни средний, ни тяжёлый доспех*__\.\n\n"
                                   "_*Когти\.*_ Вы владеете своей безоружной атакой, которая причиняет при попадании *рубящий урон 1к4*\.\n\n"
                                   "_*Язык\.*_ Вы разговариваете, читаете и пишете на *Общем, Ауране и языке Ааракокр*\.\n\n"
-                                  "_*Предыстория\.*_ Предыстории, которые наиболее подходят ааракокрам, это *Мудрец, Отшельник или Чужеземец*\.", parse_mode=ParseMode.MARKDOWN_V2)
+                                  "_*Предыстория\.*_ Предыстории, которые наиболее подходят ааракокрам, это "
+                                  "*Мудрец, Отшельник или Чужеземец*\.", parse_mode=ParseMode.MARKDOWN_V2, reply_markup=choose_keyboard())
+
+
+@router.callback_query(F.data == "accept")
+async def choose_race(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(text=callback.message.text, reply_markup=None)
+    race = await state.get_data()
+    await callback.message.answer("Твоя раса " + race['character_race'], reply_markup=ReplyKeyboardRemove())
+    await callback.answer()
+    await state.set_state(fsm.Character.character_class)
+
+
+@router.callback_query(F.data == "back")
+async def choose_race(callback: CallbackQuery, state: FSMContext):
+    await callback.message.edit_text(text=callback.message.text, reply_markup=None)
+    await state.update_data(None)
+    await callback.message.answer(text="(Выберите расу персонажа:)", reply_markup=race_kb())
+    await callback.answer()
+    await state.set_state(fsm.Character.character_race)
+
